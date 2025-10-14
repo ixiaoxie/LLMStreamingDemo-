@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM流式响应测试</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .input-section {
+            margin-bottom: 30px;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        input[type="text"], textarea, select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+
+        input[type="text"]:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+
+        .options {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .option-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+        }
+
+        input[type="number"] {
+            width: 100px;
+            padding: 8px;
+            border: 2px solid #e1e5e9;
+            border-radius: 6px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        button {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            flex: 1;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+            transform: translateY(-2px);
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+            transform: translateY(-2px);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .status {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .status.idle {
+            background: #e9ecef;
+            color: #6c757d;
+        }
+
+        .status.loading {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .output-section {
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            padding: 20px;
+            min-height: 300px;
+            background: #f8f9fa;
+        }
+
+        .output-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .output-title {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .output-stats {
+            font-size: 14px;
+            color: #6c757d;
+        }
+
+        .output-content {
+            font-family: 'Courier New', monospace;
+            font-size: 16px;
+            line-height: 1.6;
+            color: #333;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .typing-cursor {
+            display: inline-block;
+            width: 2px;
+            height: 20px;
+            background: #667eea;
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
+
+        .error-message {
+            color: #dc3545;
+            background: #f8d7da;
+            padding: 10px;
+            border-radius: 6px;
+            margin-top: 10px;
+        }
+
+        .success-message {
+            color: #155724;
+            background: #d4edda;
+            padding: 10px;
+            border-radius: 6px;
+            margin-top: 10px;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .footer {
+            background: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            color: #6c757d;
+            border-top: 1px solid #dee2e6;
+        }
+
+        @media (max-width: 768px) {
+            .options {
+                grid-template-columns: 1fr;
+            }
+            
+            .button-group {
+                flex-direction: column;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 LLM流式响应测试</h1>
+            <p>实时体验大模型流式输出效果</p>
+        </div>
+
+        <div class="content">
+            <div class="input-section">
+                <div class="input-group">
+                    <label for="prompt">提示词：</label>
+                    <textarea id="prompt" placeholder="请输入您的问题或提示词...">你好，请介绍一下自己</textarea>
+                </div>
+
+                <div class="options">
+                    <div class="option-group">
+                        <input type="checkbox" id="charLevel" checked>
+                        <label for="charLevel">字符级输出（打字机效果）</label>
+                    </div>
+                    <div class="option-group">
+                        <label for="maxTokens">最大Token数：</label>
+                        <input type="number" id="maxTokens" value="500" min="1" max="2000">
+                    </div>
+                </div>
+
+                <div class="button-group">
+                    <button id="startBtn" class="btn-primary">开始流式响应</button>
+                    <button id="stopBtn" class="btn-danger" disabled>停止响应</button>
+                    <button id="clearBtn" class="btn-secondary">清空输出</button>
+                </div>
+
+                <div id="status" class="status idle">准备就绪</div>
+            </div>
+
+            <div class="output-section">
+                <div class="output-header">
+                    <div class="output-title">响应输出</div>
+                    <div class="output-stats">
+                        <span id="charCount">字符数: 0</span> | 
+                        <span id="lineCount">行数: 0</span>
+                    </div>
+                </div>
+                <div id="output" class="output-content"></div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>LLM Streaming Demo - 基于Spring Boot的流式响应处理</p>
+        </div>
+    </div>
+
+    <script>
+        class StreamTester {
+            constructor() {
+                this.isStreaming = false;
+                this.controller = null;
+                this.charCount = 0;
+                this.lineCount = 0;
+                
+                this.initializeElements();
+                this.bindEvents();
+            }
+
+            initializeElements() {
+                this.promptInput = document.getElementById('prompt');
+                this.charLevelCheckbox = document.getElementById('charLevel');
+                this.maxTokensInput = document.getElementById('maxTokens');
+                this.startBtn = document.getElementById('startBtn');
+                this.stopBtn = document.getElementById('stopBtn');
+                this.clearBtn = document.getElementById('clearBtn');
+                this.statusDiv = document.getElementById('status');
+                this.outputDiv = document.getElementById('output');
+                this.charCountSpan = document.getElementById('charCount');
+                this.lineCountSpan = document.getElementById('lineCount');
+            }
+
+            bindEvents() {
+                this.startBtn.addEventListener('click', () => this.startStreaming());
+                this.stopBtn.addEventListener('click', () => this.stopStreaming());
+                this.clearBtn.addEventListener('click', () => this.clearOutput());
+                
+                // 回车键发送
+                this.promptInput.addEventListener('keydown', (e) => {
+                    if (e.ctrlKey && e.key === 'Enter') {
+                        this.startStreaming();
+                    }
+                });
+            }
+
+            async startStreaming() {
+                if (this.isStreaming) return;
+
+                const prompt = this.promptInput.value.trim();
+                if (!prompt) {
+                    this.showError('请输入提示词');
+                    return;
+                }
+
+                this.isStreaming = true;
+                this.updateUI();
+                this.clearOutput();
+                this.updateStatus('正在连接...', 'loading');
+
+                try {
+                    const charLevel = this.charLevelCheckbox.checked;
+                    const maxTokens = parseInt(this.maxTokensInput.value);
+                    
+                    const url = `/api/stream/llm?prompt=${encodeURIComponent(prompt)}&charLevel=${charLevel}&maxTokens=${maxTokens}`;
+                    
+                    this.controller = new AbortController();
+                    const response = await fetch(url, {
+                        method: 'GET',
+                        signal: this.controller.signal,
+                        headers: {
+                            'Accept': 'application/json',
+                        }
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+
+                    this.updateStatus('正在接收响应...', 'loading');
+                    await this.processStream(response);
+
+                } catch (error) {
+                    if (error.name === 'AbortError') {
+                        this.updateStatus('已停止', 'idle');
+                    } else {
+                        this.showError(`请求失败: ${error.message}`);
+                    }
+                } finally {
+                    this.isStreaming = false;
+                    this.updateUI();
+                }
+            }
+
+            async processStream(response) {
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+
+                try {
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        
+                        if (done) break;
+
+                        buffer += decoder.decode(value, { stream: true });
+                        const lines = buffer.split('\n');
+                        buffer = lines.pop(); // 保留最后一个不完整的行
+
+                        for (const line of lines) {
+                            if (line.trim()) {
+                                this.processLine(line.trim());
+                            }
+                        }
+                    }
+
+                    // 处理剩余的buffer
+                    if (buffer.trim()) {
+                        this.processLine(buffer.trim());
+                    }
+
+                    this.updateStatus('响应完成', 'idle');
+                    this.addCursor(false);
+
+                } catch (error) {
+                    this.showError(`流处理错误: ${error.message}`);
+                } finally {
+                    reader.releaseLock();
+                }
+            }
+
+            processLine(line) {
+                try {
+                    const data = JSON.parse(line);
+                    
+                    if (data.dataType === 'LLM_RESPONSE' && data.content) {
+                        this.appendContent(data.content);
+                    } else if (data.dataType === 'END') {
+                        this.updateStatus('响应完成', 'idle');
+                        this.addCursor(false);
+                    } else if (data.dataType === 'ERROR') {
+                        this.showError(data.errorMessage || '未知错误');
+                    }
+                } catch (error) {
+                    console.warn('解析JSON失败:', line, error);
+                }
+            }
+
+            appendContent(content) {
+                this.outputDiv.textContent += content;
+                this.charCount += content.length;
+                this.updateStats();
+                this.addCursor(true);
+                this.scrollToBottom();
+            }
+
+            addCursor(show) {
+                // 移除现有的光标
+                const existingCursor = this.outputDiv.querySelector('.typing-cursor');
+                if (existingCursor) {
+                    existingCursor.remove();
+                }
+
+                if (show) {
+                    const cursor = document.createElement('span');
+                    cursor.className = 'typing-cursor';
+                    this.outputDiv.appendChild(cursor);
+                }
+            }
+
+            updateStats() {
+                this.charCountSpan.textContent = `字符数: ${this.charCount}`;
+                this.lineCountSpan.textContent = `行数: ${this.outputDiv.textContent.split('\n').length}`;
+            }
+
+            scrollToBottom() {
+                this.outputDiv.scrollTop = this.outputDiv.scrollHeight;
+            }
+
+            stopStreaming() {
+                if (this.controller) {
+                    this.controller.abort();
+                }
+                this.isStreaming = false;
+                this.updateUI();
+                this.updateStatus('已停止', 'idle');
+                this.addCursor(false);
+            }
+
+            clearOutput() {
+                this.outputDiv.textContent = '';
+                this.charCount = 0;
+                this.updateStats();
+                this.addCursor(false);
+            }
+
+            updateStatus(message, type) {
+                this.statusDiv.textContent = message;
+                this.statusDiv.className = `status ${type}`;
+            }
+
+            showError(message) {
+                this.updateStatus(`错误: ${message}`, 'error');
+                this.addCursor(false);
+            }
+
+            updateUI() {
+                this.startBtn.disabled = this.isStreaming;
+                this.stopBtn.disabled = !this.isStreaming;
+                this.promptInput.disabled = this.isStreaming;
+                this.charLevelCheckbox.disabled = this.isStreaming;
+                this.maxTokensInput.disabled = this.isStreaming;
+            }
+        }
+
+        // 初始化应用
+        document.addEventListener('DOMContentLoaded', () => {
+            new StreamTester();
+        });
+    </script>
+</body>
+</html>
+

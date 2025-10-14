@@ -1,0 +1,16 @@
+# 开发环境配置
+llm:
+  api:
+    # 开发环境默认配置
+    key: ${LLM_API_KEY:YOUR_API_KEY}
+    url: ${LLM_API_URL:https://qianfan.baidubce.com/v2/chat/completions}
+    model: ${LLM_MODEL:ernie-speed-pro-128k}
+    timeout: 60000
+
+# 开发环境日志配置
+logging:
+  level:
+    com.demo.llmstreaming: DEBUG
+    org.springframework.web: DEBUG
+    okhttp3: DEBUG
+
