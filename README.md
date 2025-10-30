@@ -305,11 +305,6 @@ spec:
 
 ## ⭐ 如果这个项目对你有帮助，请给个Star！
 
-## 📞 联系方式
-
-- 作者: Your Name
-- 邮箱: your.email@example.com
-- GitHub: [@yourusername](https://github.com/yourusername)
 
 ## 🙏 致谢
 
